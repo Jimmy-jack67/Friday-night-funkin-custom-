@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FNF Style: Endless Mimic Sandbox Elite</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0c10;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* Stages */
+        .stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 40px;
+            position: relative;
+            background-color: #1a1b26;
+            transition: background-color 0.2s ease, box-shadow 0.1s ease;
+        }
+        #player-stage {
+            border-right: 2px solid #24283b;
+        }
+        #ai-stage {
+            background-color: #070d0a;
+        }
+
+        .character-title {
+            font-size: 1.6rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            z-index: 5;
+            text-transform: uppercase;
+        }
+        #player-stage .character-title { color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
+        #ai-stage .character-title { color: #00ff80; text-shadow: 0 0 10px rgba(0,255,128,0.5); }
+
+        /* FNF Scrolling Highway */
+        .highway {
+            position: relative;
+            width: 360px;
+            height: 520px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 3px solid #24283b;
+        }
+
+        /* Support Downscroll Positioning dynamically via JS class switching */
+        .highway.downscroll .receptor-row {
+            top: auto;
+            bottom: 0;
+            border-top: 2px dashed rgba(255,255,255,0.1);
+            border-bottom: none;
+        }
+
+        /* Target Static Strips */
+        .receptor-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            width: 100%;
+            height: 80px;
+            padding: 0 10px;
+            background-color: rgba(255,255,255,0.03);
+            border-bottom: 2px dashed rgba(255,255,255,0.1);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 3;
+        }
+
+        .receptor {
+            width: 65px;
+            height: 65px;
+            border: 4px solid #444b6a;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #444b6a;
+            background-color: #1f2335;
+            transition: transform 0.05s ease-out, background-color 0.05s;
+        }
+
+        .receptor[data-note="LEFT"] { border-color: #bb9af7; color: #bb9af7; }
+        .receptor[data-note="DOWN"] { border-color: #7aa2f7; color: #7aa2f7; }
+        .receptor[data-note="UP"] { border-color: #9ece6a; color: #9ece6a; }
+        .receptor[data-note="RIGHT"] { border-color: #f7768e; color: #f7768e; }
+
+        .receptor.active {
+            transform: scale(1.15);
+            background-color: #fff !important;
+            color: #000 !important;
+            box-shadow: 0 0 25px currentColor;
+        }
+
+        /* Moving Notes */
+        .note {
+            position: absolute;
+            width: 65px;
+            height: 65px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: white;
+            z-index: 2;
+        }
+        .note[data-note="LEFT"] { background-color: #bb9af7; box-shadow: 0 0 12px #bb9af7; }
+        .note[data-note="DOWN"] { background-color: #7aa2f7; box-shadow: 0 0 12px #7aa2f7; }
+        .note[data-note="UP"] { background-color: #9ece6a; box-shadow: 0 0 12px #9ece6a; }
+        .note[data-note="RIGHT"] { background-color: #f7768e; box-shadow: 0 0 12px #f7768e; }
+
+        /* Avatar Display Framework */
+        .avatar-container {
+            position: absolute;
+            bottom: 160px;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .ai-avatar-graphic {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #00ff80, #00aa50);
+            border-radius: 50%;
+            transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 15px rgba(0,255,128,0.3);
+        }
+        .ai-avatar-graphic.sing-LEFT { transform: scale(1.2) translateX(-20px); background: #bb9af7; box-shadow: 0 0 25px #bb9af7; }
+        .ai-avatar-graphic.sing-DOWN { transform: scale(1.2) translateY(20px); background: #7aa2f7; box-shadow: 0 0 25px #7aa2f7; }
+        .ai-avatar-graphic.sing-UP { transform: scale(1.2) translateY(-20px); background: #9ece6a; box-shadow: 0 0 25px #9ece6a; }
+        .ai-avatar-graphic.sing-RIGHT { transform: scale(1.2) translateX(20px); background: #f7768e; box-shadow: 0 0 25px #f7768e; }
+
+        /* Judgments & Combo Visuals */
+        .judgment-popup {
+            position: absolute;
+            top: 35%;
+            font-size: 2.8rem;
+            font-weight: 900;
+            font-style: italic;
+            text-shadow: 3px 3px 0px #000;
+            animation: popOut 0.35s ease-out forwards;
+            z-index: 10;
+        }
+        .combo-popup {
+            position: absolute;
+            top: 43%;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ff9e64;
+            text-shadow: 2px 2px 0px #000;
+            animation: popOut 0.4s ease-out forwards;
+            z-index: 9;
+        }
+
+        @keyframes popOut {
+            0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+            50% { transform: scale(1.1) rotate(4deg); opacity: 1; }
+            100% { transform: scale(1) translateY(-40px); opacity: 0; }
+        }
+
+        /* Enhanced HUD & Engine Configuration Controls */
+        #hud {
+            position: absolute;
+            bottom: 3%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 750px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+            background: rgba(26, 27, 38, 0.85);
+            padding: 15px 25px;
+            border-radius: 16px;
+            border: 2px solid #24283b;
+            backdrop-filter: blur(6px);
+        }
+        #status-msg {
+            position: relative;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            color: #c0caf5;
+        }
+
+        /* Meta Stats Layout */
+        #stats-bar {
+            display: flex;
+            gap: 20px;
+            font-size: 0.95rem;
+            font-family: monospace;
+            color: #a9b1d6;
+        }
+        .stat-val { color: #2ac3de; font-weight: bold; }
+
+        /* Configuration Controls Container */
+        #controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+        }
+        .engine-btn {
+            background-color: #414868;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background-color 0.2s;
+        }
+        .engine-btn:hover { background-color: #565f89; }
+        .engine-btn.active-toggle { background-color: #2ac3de; color: #1a1b26; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="player-stage" class="stage">
+            <div class="character-title">PLAYER (YOUR TURN)</div>
+            <div class="highway" id="player-highway">
+                <div class="receptor-row">
+                    <div class="receptor" data-note="LEFT">←</div>
+                    <div class="receptor" data-note="DOWN">↓</div>
+                    <div class="receptor" data-note="UP">↑</div>
+                    <div class="receptor" data-note="RIGHT">→</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="ai-stage" class="stage">
+            <div class="character-title">GEMINI AI</div>
+            <div class="highway" id="ai-highway">
+                <div class="receptor-row">
+                    <div class="receptor" data-note="LEFT">←</div>
+                    <div class="receptor" data-note="DOWN">↓</div>
+                    <div class="receptor" data-note="UP">↑</div>
+                    <div class="receptor" data-note="RIGHT">→</div>
+                </div>
+            </div>
+            <div class="avatar-container">
+                <div id="ai-sprite" class="ai-avatar-graphic"></div>
+            </div>
+        </div>
+
+        <div id="hud">
+            <div id="status-msg">Click anywhere to activate Audio Context & Start Jamming!</div>
+            <div id="stats-bar">
+                <div>Score: <span id="score-val" class="stat-val">0</span></div>
+                <div>Combo: <span id="combo-val" class="stat-val">0</span></div>
+                <div>Accuracy: <span id="accuracy-val" class="stat-val">0.00%</span></div>
+            </div>
+            <div id="controls">
+                <button class="engine-btn" id="scroll-toggle">SCROLL: UP</button>
+                <button class="engine-btn" id="clear-btn">RESET COUNTERS</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameActive = false;
+        let currentTurn = 'PLAYER'; 
+        let activeNotes = [];
+        
+        let recordedSequence = [];
+        let turnTimer = null;
+        let turnStartTime = 0;
+        const turnTimeoutDuration = 1400; 
+
+        // Mechanics Metrics Variables
+        let engineScore = 0;
+        let engineCombo = 0;
+        let totalNotesHit = 0;
+        let totalNotesSpawned = 0;
+        let isDownscroll = false;
+
+        const arrowDirections = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
+        const arrowIcons = { 'LEFT': '←', 'DOWN': '↓', 'UP': '↑', 'RIGHT': '→' };
+        const lanePositions = { 'LEFT': 15, 'DOWN': 105, 'UP': 195, 'RIGHT': 285 };
+        
+        const validKeys = {
+            'ArrowLeft': 'LEFT', 'a': 'LEFT', 'A': 'LEFT',
+            'ArrowDown': 'DOWN', 's': 'DOWN', 'S': 'DOWN',
+            'ArrowUp':   'UP',   'w': 'UP',   'W': 'UP',
+            'ArrowRight':'RIGHT','d': 'RIGHT','D': 'RIGHT'
+        };
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        const pitches = { 'LEFT': 261.63, 'DOWN': 293.66, 'UP': 329.63, 'RIGHT': 349.23 };
+
+        // Modular Audio Synthesis Engine Architecture
+        function playVocal(dir, isAi = false) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const vibrato = audioCtx.createOscillator();
+            const vocalGain = audioCtx.createGain();
+            const vibratoGain = audioCtx.createGain();
+
+            osc.type = isAi ? 'sawtooth' : 'triangle';
+            osc.frequency.setValueAtTime(pitches[dir] * (isAi ? 0.75 : 1), audioCtx.currentTime);
+
+            // Establish real-time vibrato modulation logic
+            vibrato.frequency.setValueAtTime(isAi ? 9 : 12, audioCtx.currentTime);
+            vibratoGain.gain.setValueAtTime(isAi ? 6 : 4, audioCtx.currentTime);
+
+            // Connect vibrato route logic to target frequencies
+            vibrato.connect(vibratoGain);
+            vibratoGain.connect(osc.frequency);
+
+            // Establish standard volume profiles
+            vocalGain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            vocalGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.28);
+            
+            osc.connect(vocalGain);
+            vocalGain.connect(audioCtx.destination);
+            
+            vibrato.start();
+            osc.start();
+            
+            vibrato.stop(audioCtx.currentTime + 0.28);
+            osc.stop(audioCtx.currentTime + 0.28);
+        }
+
+        window.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+                gameActive = true;
+                updateTurnStyles();
+                requestAnimationFrame(gameLoop);
+            }
+        });
+
+        // Toggle mechanics logic configuration triggers
+        document.getElementById('scroll-toggle').addEventListener('click', () => {
+            isDownscroll = !isDownscroll;
+            const highways = document.querySelectorAll('.highway');
+            highways.forEach(hw => {
+                if(isDownscroll) {
+                    hw.classList.add('downscroll');
+                } else {
+                    hw.classList.remove('downscroll');
+                }
+            });
+            document.getElementById('scroll-toggle').innerText = `SCROLL: ${isDownscroll ? 'DOWN' : 'UP'}`;
+            document.getElementById('scroll-toggle').classList.toggle('active-toggle', isDownscroll);
+        });
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            engineScore = 0;
+            engineCombo = 0;
+            totalNotesHit = 0;
+            totalNotesSpawned = 0;
+            updateEngineHUD();
+        });
+
+        function spawnArrow(direction, side, initialY = null) {
+            const highwayId = side === 'PLAYER' ? 'player-highway' : 'ai-highway';
+            const highway = document.getElementById(highwayId);
+            if (!highway) return;
+            
+            const noteEl = document.createElement('div');
+            noteEl.className = 'note';
+            noteEl.setAttribute('data-note', direction);
+            noteEl.innerText = arrowIcons[direction];
+            noteEl.style.left = `${lanePositions[direction]}px`;
+            
+            let targetY = initialY;
+            if (targetY === null) {
+                targetY = isDownscroll ? 10 : 510;
+            }
+            noteEl.style.top = `${targetY}px`;
+            
+            highway.appendChild(noteEl);
+
+            totalNotesSpawned++;
+
+            activeNotes.push({
+                element: noteEl,
+                direction: direction,
+                side: side,
+                y: targetY,
+                hit: false
+            });
+        }
+
+        let lastTime = performance.now();
+        function gameLoop(now) {
+            if (!gameActive) return;
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
+
+            const scrollSpeed = 290; 
+
+            for (let i = activeNotes.length - 1; i >= 0; i--) {
+                const note = activeNotes[i];
+                
+                if (isDownscroll) {
+                    note.y += scrollSpeed * delta;
+                } else {
+                    note.y -= scrollSpeed * delta;
+                }
+                note.element.style.top = `${note.y}px`;
+
+                // Handle AI automation trigger intersections
+                if (note.side === 'AI' && !note.hit) {
+                    const isAiHitting = isDownscroll ? (note.y >= 430) : (note.y <= 12);
+                    if (isAiHitting) {
+                        note.hit = true;
+                        totalNotesHit++;
+                        engineCombo++;
+                        engineScore += 350;
+
+                        triggerReceptorFlash('ai-highway', note.direction);
+                        playVocal(note.direction, true);
+                        animateAiSprite(note.direction);
+
+                        // Call judgment popup specifically to the AI side
+                        createIdenpendentAiPopup();
+                        updateEngineHUD();
+                        
+                        const aiStage = document.getElementById('ai-stage');
+                        aiStage.style.backgroundColor = '#0f2419';
+                        setTimeout(() => aiStage.style.backgroundColor = '#070d0a', 90);
+                    }
+                }
+
+                // Boundary tracking configuration
+                let isPastBoundary = isDownscroll ? (note.y > 540) : (note.y < -50);
+                if (isPastBoundary) {
+                    if (!note.hit) {
+                        // Dynamically determine which stage failed to hit the note
+                        const targetStageId = note.side === 'PLAYER' ? 'player-stage' : 'ai-stage';
+                        createJudgmentPopup('MISS', targetStageId, '#f7768e');
+                        engineCombo = 0;
+                        updateEngineHUD();
+                    }
+                    note.element.remove();
+                    activeNotes.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!gameActive || e.repeat) return;
+            const matchedNote = validKeys[e.key];
+            if (!matchedNote) return;
+
+            if (currentTurn === 'PLAYER') {
+                if (recordedSequence.length === 0) {
+                    turnStartTime = performance.now();
+                }
+
+                const timestampOffset = performance.now() - turnStartTime;
+                recordedSequence.push({ direction: matchedNote, offset: timestampOffset });
+
+                spawnArrow(matchedNote, 'PLAYER', isDownscroll ? 10 : 510);
+                triggerReceptorFlash('player-highway', matchedNote);
+                playVocal(matchedNote, false);
+
+                const pStage = document.getElementById('player-stage');
+                pStage.style.backgroundColor = '#1f2335';
+                setTimeout(() => pStage.style.backgroundColor = '#1a1b26', 70);
+
+                let processedHit = false;
+                for (let note of activeNotes) {
+                    if (note.side === 'PLAYER' && note.direction === matchedNote && !note.hit) {
+                        const targetZone = isDownscroll ? (note.y > 400) : (note.y < 110);
+                        if (targetZone) {
+                            note.hit = true;
+                            totalNotesHit++;
+                            engineCombo++;
+                            engineScore += 350;
+                            
+                            // Popups now trigger correctly on the Player side
+                            createJudgmentPopup('SICK!!', 'player-stage', '#9ece6a');
+                            if (engineCombo >= 3) {
+                                createComboPopup(engineCombo, 'player-stage');
+                            }
+
+                            note.element.style.opacity = 0.35; 
+                            processedHit = true;
+                            updateEngineHUD();
+                            break;
+                        }
+                    }
+                }
+
+                if (!processedHit) {
+                    updateEngineHUD();
+                }
+
+                clearTimeout(turnTimer);
+                turnTimer = setTimeout(() => {
+                    startAiTurnSequence();
+                }, turnTimeoutDuration);
+            }
+        });
+
+        // AI evaluation feedback configurations
+        function createIdenpendentAiPopup() {
+            createJudgmentPopup('SICK!!', 'ai-stage', '#9ece6a');
+            if (engineCombo >= 3) {
+                createComboPopup(engineCombo, 'ai-stage');
+            }
+        }
+
+        function startAiTurnSequence() {
+            currentTurn = 'AI';
+            updateTurnStyles();
+
+            if (recordedSequence.length === 0) {
+                setTimeout(() => {
+                    currentTurn = 'PLAYER';
+                    updateTurnStyles();
+                }, 1000);
+                return;
+            }
+
+            recordedSequence.forEach((noteData) => {
+                setTimeout(() => {
+                    if (!gameActive) return;
+                    spawnArrow(noteData.direction, 'AI', isDownscroll ? 10 : 510);
+                }, noteData.offset);
+            });
+
+            const totalSequenceDuration = recordedSequence[recordedSequence.length - 1].offset;
+            recordedSequence = [];
+
+            setTimeout(() => {
+                if (!gameActive) return;
+                currentTurn = 'PLAYER';
+                updateTurnStyles();
+            }, totalSequenceDuration + 1800); 
+        }
+
+        function updateTurnStyles() {
+            const playerStage = document.getElementById('player-stage');
+            const aiStage = document.getElementById('ai-stage');
+            const statusLabel = document.getElementById('status-msg');
+            const playerTitle = document.querySelector('#player-stage .character-title');
+
+            if (currentTurn === 'PLAYER') {
+                playerStage.style.backgroundColor = '#1a1b26';
+                aiStage.style.backgroundColor = '#070d0a';
+                statusLabel.innerText = "🎤 YOUR TURN! Lay down an input rhythm configuration sequence!";
+                playerTitle.innerText = "PLAYER (YOUR TURN)";
+            } else {
+                playerStage.style.backgroundColor = '#0d0e14';
+                aiStage.style.backgroundColor = '#0f1c15';
+                statusLabel.innerText = "🤖 AI MIRROR MODULATION ACTIVE: Replicating structural configurations...";
+                playerTitle.innerText = "PLAYER (WAITING...)";
+            }
+        }
+
+        function updateEngineHUD() {
+            document.getElementById('score-val').innerText = engineScore;
+            document.getElementById('combo-val').innerText = engineCombo;
+            
+            const accuracyCalc = totalNotesSpawned > 0 ? ((totalNotesHit / totalNotesSpawned) * 100).toFixed(2) : "0.00";
+            document.getElementById('accuracy-val').innerText = `${accuracyCalc}%`;
+        }
+
+        function triggerReceptorFlash(highwayId, direction) {
+            const receptor = document.querySelector(`#${highwayId} .receptor[data-note="${direction}"]`);
+            if (receptor) {
+                receptor.classList.add('active');
+                setTimeout(() => receptor.classList.remove('active'), 80);
+            }
+        }
+
+        function animateAiSprite(direction) {
+            const sprite = document.getElementById('ai-sprite');
+            sprite.className = `ai-avatar-graphic sing-${direction}`;
+            clearTimeout(sprite.timer);
+            sprite.timer = setTimeout(() => {
+                sprite.className = 'ai-avatar-graphic';
+            }, 200);
+        }
+
+        function createJudgmentPopup(text, stageId, color) {
+            const stage = document.getElementById(stageId);
+            const popup = document.createElement('div');
+            popup.className = 'judgment-popup';
+            popup.innerText = text;
+            popup.style.color = color;
+            stage.appendChild(popup);
+            setTimeout(() => popup.remove(), 350);
+        }
+
+        function createComboPopup(count, stageId) {
+            const stage = document.getElementById(stageId);
+            const popup = document.createElement('div');
+            popup.className = 'combo-popup';
+            popup.innerText = `Combo x${count}`;
+            stage.appendChild(popup);
+            setTimeout(() => popup.remove(), 400);
+        }
+    </script>
+</body>
+</html>
